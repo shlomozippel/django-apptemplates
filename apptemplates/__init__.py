@@ -9,6 +9,18 @@ Template usage example::
 
     {% extends "admin:admin/base.html" %}
 
+It is also possible to exclude an app when extending a template. This is 
+useful when you want to extend and override a template without explicitly 
+specifying the base template to use. The above admin example usage would not work
+properly when using an additional app that overrides the built in admin
+templates, for instance django-grappelli 
+(https://github.com/sehmaschine/django-grappelli) or django-admin-bootstrapped 
+(https://github.com/riccardo-forina/django-admin-bootstrapped)
+
+Exclude app usage example:
+
+    {% extends "-myapp:admin/base.html" %}
+
 Settings::
 
     TEMPLATE_LOADERS = (
@@ -24,7 +36,8 @@ from os.path import dirname, join, abspath
 
 from django.conf import settings
 from django.utils.importlib import import_module
-from django.template.loaders.filesystem import Loader as FilesystemLoader
+from django.template.loaders.app_directories import (
+    Loader as AppDirLoader, app_template_dirs)
 
 _cache = {}
 
@@ -50,23 +63,27 @@ def get_app_template_dir(app_name):
     return template_dir
 
 
-class Loader(FilesystemLoader):
+class Loader(AppDirLoader):
     is_usable = True
 
     def get_template_sources(self, template_name, template_dirs=None):
-        """
-        Returns the absolute paths to "template_name" in the specified app.
-        If the name does not contain an app name (no colon), an empty list
-        is returned.
-        The parent FilesystemLoader.load_template_source() will take care
-        of the actual loading for us.
-        """
-        if not ':' in template_name:
-            return []
-        app_name, template_name = template_name.split(":", 1)
-        template_dir = get_app_template_dir(app_name)
-        if template_dir:
-            return [join(template_dir, template_name)]
-        else:
-            return []
+        if not template_dirs:
+            template_dirs = app_template_dirs
 
+        if ':' in template_name:
+            app_name, template_name = template_name.split(":", 1)
+
+            # should we exclude this app?
+            if app_name.startswith('-'):
+                app_name = app_name[1:]
+                try:
+                    template_dirs = list(template_dirs)
+                    template_dirs.remove(get_app_template_dir(app_name))
+                except ValueError: 
+                    pass
+            # or use it exclusively?
+            else:
+                template_dirs = [get_app_template_dir(app_name)]
+
+        return super(Loader, self).get_template_sources(
+            template_name, template_dirs)
