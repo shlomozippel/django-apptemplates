@@ -16,7 +16,7 @@ specifying the base template to use. The above admin example usage would not wor
 properly when using an additional app that overrides the built in admin
 templates, for instance django-grappelli (https://github.com/sehmaschine/django-grappelli) or django-admin-bootstrapped (https://github.com/riccardo-forina/django-admin-bootstrapped)
 
-Exclude app usage example:
+Exclude app usage example::
 
     {% extends "-myapp:admin/base.html" %}
 
